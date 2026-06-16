@@ -1,3 +1,4 @@
+import 'package:student_management_app/screens/api_student_registry.dart';
 import 'package:flutter/material.dart';
 import 'student_list.dart';
 import 'login.dart';
@@ -36,7 +37,12 @@ class DashboardScreen extends StatelessWidget {
               title: 'Departments',
               icon: Icons.school,
               color: Colors.green,
-              onTap: () {},
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const ApiStudentRegistryScreen()),
+                );
+              },
             ),
           ],
         ),
