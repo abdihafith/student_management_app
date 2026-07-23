@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../services/database_helper.dart';
 
 class RecordManagementScreen extends StatefulWidget {
-  const RecordManagementScreen({Key? key}) : super(key: key);
+  const RecordManagementScreen({super.key});
 
   @override
   State<RecordManagementScreen> createState() => _RecordManagementScreenState();
@@ -28,6 +28,7 @@ class _RecordManagementScreenState extends State<RecordManagementScreen> {
   // Fetch or refresh the data array from SQLite
   Future<void> _refreshRecords() async {
     final data = await _dbHelper.queryAllRecords();
+    if (!mounted) return;
     setState(() {
       _records = data;
       _selectedId = null;
@@ -42,6 +43,7 @@ class _RecordManagementScreenState extends State<RecordManagementScreen> {
       return;
     }
     final data = await _dbHelper.searchRecords(query);
+    if (!mounted) return;
     setState(() {
       _records = data;
     });
@@ -83,7 +85,6 @@ class _RecordManagementScreenState extends State<RecordManagementScreen> {
       await _dbHelper.insertRecord(rowData);
     } else {
       // Update implementation
-      rowData['id'] = _selectedId!.toString(); // Add ID field to track map mutations
       await _dbHelper.updateRecord({
         'id': _selectedId,
         ...rowData

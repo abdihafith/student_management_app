@@ -1,8 +1,9 @@
+import 'package:student_management_app/screens/student_detail_screen.dart';
 import 'package:student_management_app/services/database_helper.dart';
 import 'package:flutter/material.dart';
 
 class StudentListScreen extends StatefulWidget {
-  const StudentListScreen({Key? key}) : super(key: key);
+  const StudentListScreen({super.key});
 
   @override
   State<StudentListScreen> createState() => _StudentListScreenState();
@@ -43,6 +44,7 @@ class _StudentListScreenState extends State<StudentListScreen> {
   Future<void> _loadStoredStudents() async {
     try {
       final data = await _dbHelper.queryAllRecords();
+      if (!mounted) return;
       setState(() {
         _dbStudents = data;
 
@@ -52,6 +54,7 @@ class _StudentListScreenState extends State<StudentListScreen> {
         _isLoading = false;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() => _isLoading = false);
       debugPrint("Database fetch error: $e");
     }
@@ -84,27 +87,58 @@ class _StudentListScreenState extends State<StudentListScreen> {
     final nameController = TextEditingController();
     final rollController = TextEditingController();
     final deptController = TextEditingController();
-    final emailController = TextEditingController();
 
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      builder: (context) => Padding(
-        padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom, left: 20, right: 20, top: 20),
+      backgroundColor: Colors.transparent,
+      builder: (bContext) => Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
+        ),
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(bContext).viewInsets.bottom + 20,
+          left: 24,
+          right: 24,
+          top: 24,
+        ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const Text('Add New Student', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 16),
-            TextField(controller: nameController, decoration: const InputDecoration(labelText: 'Name')),
-            TextField(controller: rollController, decoration: const InputDecoration(labelText: 'Roll Number')),
-            TextField(controller: deptController, decoration: const InputDecoration(labelText: 'Department')),
-            TextField(controller: emailController, decoration: const InputDecoration(labelText: 'Email')),
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(10)),
+              ),
+            ),
             const SizedBox(height: 20),
+            const Text(
+              'Add New Student',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 24),
+            _buildModalTextField(controller: nameController, label: 'Full Name', icon: Icons.person_outline),
+            const SizedBox(height: 16),
+            _buildModalTextField(controller: rollController, label: 'Roll Number', icon: Icons.badge_outlined),
+            const SizedBox(height: 16),
+            _buildModalTextField(controller: deptController, label: 'Department', icon: Icons.account_balance_outlined),
+            const SizedBox(height: 30),
             ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.deepOrange,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
               onPressed: () async {
                 if (nameController.text.isNotEmpty) {
-                  // Save directly into the permanent SQLite Database
+                  final messenger = ScaffoldMessenger.of(context);
+                  final navigator = Navigator.of(context);
+                  
                   await _dbHelper.insertRecord({
                     'name': nameController.text,
                     'course': deptController.text,
@@ -112,17 +146,38 @@ class _StudentListScreenState extends State<StudentListScreen> {
                   });
 
                   if (!mounted) return;
-                  Navigator.pop(context);
+                  
+                  navigator.pop();
 
-                  _searchController.clear(); // Reset search input box
-                  _loadStoredStudents(); // Force UI rebuild with fresh database row
+                  _searchController.clear();
+                  _loadStoredStudents();
+                  
+                  messenger.showSnackBar(
+                    SnackBar(
+                      content: const Text('Student added to database'),
+                      behavior: SnackBarBehavior.floating,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    ),
+                  );
                 }
               },
-              child: const Text('Save Student'),
+              child: const Text('Save Record', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
             ),
-            const SizedBox(height: 20),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildModalTextField({required TextEditingController controller, required String label, required IconData icon}) {
+    return TextField(
+      controller: controller,
+      decoration: InputDecoration(
+        labelText: label,
+        prefixIcon: Icon(icon, color: Colors.deepOrange),
+        filled: true,
+        fillColor: Colors.grey.shade50,
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
       ),
     );
   }
@@ -135,17 +190,44 @@ class _StudentListScreenState extends State<StudentListScreen> {
           ? const Center(child: CircularProgressIndicator())
           : Column(
         children: [
-          // 🔍 REAL-TIME SEARCH BAR COMPONENT
+          // 🔍 FLOATING SEARCH BAR COMPONENT
           Padding(
-            padding: const EdgeInsets.all(12.0),
-            child: TextField(
-              controller: _searchController,
-              onChanged: _filterSearch, // Runs filter logic automatically as you type
-              decoration: InputDecoration(
-                labelText: 'Search by Name, Dept, or Roll No...',
-                prefixIcon: const Icon(Icons.search),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+            child: Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(30),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.08),
+                    blurRadius: 15,
+                    offset: const Offset(0, 5),
+                  ),
+                ],
+              ),
+              child: TextField(
+                controller: _searchController,
+                onChanged: _filterSearch,
+                decoration: InputDecoration(
+                  hintText: 'Search by Name, Dept, or Roll No...',
+                  hintStyle: TextStyle(color: Colors.grey.shade500, fontSize: 14),
+                  prefixIcon: const Icon(Icons.search, color: Colors.deepOrange),
+                  suffixIcon: _searchController.text.isNotEmpty
+                      ? IconButton(
+                          icon: const Icon(Icons.cancel_rounded, color: Colors.grey),
+                          onPressed: () {
+                            _searchController.clear();
+                            _filterSearch('');
+                          },
+                        )
+                      : null,
+                  filled: true,
+                  fillColor: Colors.white,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(30),
+                    borderSide: BorderSide.none,
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
                 ),
               ),
             ),
@@ -154,7 +236,23 @@ class _StudentListScreenState extends State<StudentListScreen> {
           // THE LIST VIEW
           Expanded(
             child: _filteredStudents.isEmpty
-                ? const Center(child: Text('No students found.'))
+                ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.search_off_rounded, size: 80, color: Colors.grey.shade300),
+                        const SizedBox(height: 16),
+                        Text(
+                          'No students found',
+                          style: TextStyle(fontSize: 18, color: Colors.grey.shade600, fontWeight: FontWeight.bold),
+                        ),
+                        Text(
+                          'Try searching with a different name or roll number',
+                          style: TextStyle(color: Colors.grey.shade400),
+                        ),
+                      ],
+                    ),
+                  )
                 : ListView.builder(
               itemCount: _filteredStudents.length, // Reads from your filtered data subset
               itemBuilder: (context, index) {
@@ -169,12 +267,39 @@ class _StudentListScreenState extends State<StudentListScreen> {
                 final bool isFromDb = !id.startsWith('manual_');
 
                 return Card(
+                  elevation: 2,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                   margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   child: ListTile(
-                    title: Text(name, style: const TextStyle(fontWeight: FontWeight.bold)),
-                    subtitle: Text('$rollNumber • $department'),
+                    onTap: () => Navigator.pushNamed(
+                      context,
+                      '/student_detail',
+                      arguments: student,
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    leading: Hero(
+                      tag: 'student_avatar_${student['id']}',
+                      child: CircleAvatar(
+                        backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+                        child: Text(
+                          name.isNotEmpty ? name[0].toUpperCase() : '?',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: Theme.of(context).colorScheme.onPrimaryContainer,
+                          ),
+                        ),
+                      ),
+                    ),
+                    title: Text(name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                    subtitle: Padding(
+                      padding: const EdgeInsets.only(top: 4.0),
+                      child: Text(
+                        '$rollNumber • $department',
+                        style: TextStyle(color: Colors.grey.shade700),
+                      ),
+                    ),
                     trailing: IconButton(
-                      icon: const Icon(Icons.delete, color: Colors.red),
+                      icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
                       onPressed: () async {
                         if (isFromDb) {
                           // Safely delete permanent database record row
@@ -182,7 +307,8 @@ class _StudentListScreenState extends State<StudentListScreen> {
                           _searchController.clear();
                           _loadStoredStudents();
                         } else {
-                          ScaffoldMessenger.of(context).showSnackBar(
+                          if (!context.mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(content: Text('Cannot delete system default profiles.')),
                           );
                         }
